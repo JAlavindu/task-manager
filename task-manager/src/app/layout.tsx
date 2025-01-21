@@ -11,7 +11,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Navbar />
-        {children}
+        <div className="w-4/5 mx-auto">{children}</div>
       </body>
     </html>
   );

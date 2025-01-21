@@ -8,10 +8,10 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <nav className="bg-blue-600 p-4">
+    <nav className="bg-blue-600 p-4 ">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <Link className="text-white hover:text-gray-300" href="/">
-          MySite
+        <Link className="text-white hover:text-gray-300 font-bold" href="/">
+          TaskManager
         </Link>
         <div className="lg:flex hidden space-x-4">
           <Link className="text-white hover:text-gray-300" href="/">
