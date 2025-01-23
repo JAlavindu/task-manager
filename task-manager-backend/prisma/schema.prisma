@@ -21,12 +21,23 @@ model Task {
   updatedAt DateTime @updatedAt
 }
 
+
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  password      String?
-  googleId      String?  @unique
-  name          String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+
+  id        Int      @id @default(autoincrement())
+
+  email     String   @unique
+
+  password  String?
+
+  name      String
+
+  googleId  String?  @unique
+
+  provider  String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
 }
