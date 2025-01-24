@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import prisma from "../prisma/client";
 import { generateToken } from "../utils/jwtUtils";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response, RequestHandler } from "express";
 import { OAuth2Client } from "google-auth-library";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -21,7 +21,11 @@ export const emailSignUp = async (req: Request, res: Response) => {
   }
 };
 
-export const emailLogin = async (req: Request, res: Response) => {
+export const emailLogin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   const { email, password } = req.body;
 
   try {
@@ -31,7 +35,8 @@ export const emailLogin = async (req: Request, res: Response) => {
       !user.password ||
       !(await bcrypt.compare(password, user.password))
     ) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
     }
     const token = generateToken({ id: user.id, email: user.email });
     res.status(200).json({ token, user });
@@ -50,12 +55,13 @@ export const googleLogin = async (req: Request, res: Response) => {
     });
     const payload = ticket.getPayload();
     if (!payload) {
-      return res.status(400).json({ error: "Invalid Google token" });
+      res.status(400).json({ error: "Invalid token payload" });
+      return;
     }
-    const { email, name, sub: googleId } = payload;
-
+    const { email, name, sub: googleId } = payload || {};
     if (!email || !name) {
-      return res.status(400).json({ error: "Invalid Google token payload" });
+      res.status(400).json({ error: "Invalid token payload" });
+      return;
     }
 
     let user = await prisma.user.findUnique({ where: { googleId } });
@@ -68,6 +74,6 @@ export const googleLogin = async (req: Request, res: Response) => {
     const jwtToken = generateToken({ id: user.id, email: user.email });
     res.status(200).json({ token: jwtToken, user });
   } catch (err) {
-    res.status(400).json({ error: "Google login failed" });
+    res.status(500).json({ error: "Something went wrong" });
   }
 };
