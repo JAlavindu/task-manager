@@ -1,79 +1,43 @@
-import bcrypt from "bcryptjs";
-import prisma from "../prisma/client";
-import { generateToken } from "../utils/jwtUtils";
-import { NextFunction, Request, Response, RequestHandler } from "express";
-import { OAuth2Client } from "google-auth-library";
+import { Request, Response } from "express";
+import { registerUser, loginUser, googleLogin } from "../services/authServices";
+import { getGoogleToken, getGoogleUser } from "../utils/googleAuth";
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-export const emailSignUp = async (req: Request, res: Response) => {
+export const signup = async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
-
   try {
-    const user = await prisma.user.create({
-      data: { email, password: hashedPassword, name },
-    });
-    const token = generateToken({ id: user.id, email: user.email });
-    res.status(201).json({ token, user });
-  } catch (err) {
-    res.status(400).json({ error: "User already exists or invalid input" });
+    const user = await registerUser(email, password, name);
+    res.status(201).json(user);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
   }
 };
 
-export const emailLogin = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
-
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (
-      !user ||
-      !user.password ||
-      !(await bcrypt.compare(password, user.password))
-    ) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-    const token = generateToken({ id: user.id, email: user.email });
-    res.status(200).json({ token, user });
-  } catch (err) {
-    res.status(500).json({ error: "Something went wrong" });
+    const { token, user } = await loginUser(email, password);
+    res.json({ token, user });
+  } catch (error: any) {
+    res.status(401).json({ error: error.message });
   }
 };
 
-export const googleLogin = async (req: Request, res: Response) => {
-  const { token } = req.body;
-
+export const googleAuth = async (req: Request, res: Response) => {
+  const { code } = req.body;
   try {
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-    if (!payload) {
-      res.status(400).json({ error: "Invalid token payload" });
-      return;
-    }
-    const { email, name, sub: googleId } = payload || {};
-    if (!email || !name) {
-      res.status(400).json({ error: "Invalid token payload" });
-      return;
-    }
-
-    let user = await prisma.user.findUnique({ where: { googleId } });
-    if (!user) {
-      user = await prisma.user.create({
-        data: { email, name, googleId, provider: "google" },
-      });
-    }
-
-    const jwtToken = generateToken({ id: user.id, email: user.email });
-    res.status(200).json({ token: jwtToken, user });
-  } catch (err) {
-    res.status(500).json({ error: "Something went wrong" });
+    const { access_token } = await getGoogleToken(code);
+    const googleUser = (await getGoogleUser(access_token)) as {
+      id: string;
+      name: string;
+      email: string;
+    };
+    const { token, user } = await googleLogin(
+      googleUser.id,
+      googleUser.name,
+      googleUser.email
+    );
+    res.json({ token, user });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
   }
 };

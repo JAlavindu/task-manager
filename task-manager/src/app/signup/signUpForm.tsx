@@ -8,10 +8,43 @@ export default function SignupForm() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Call your API here
+    setError("");
+    setSuccess(false);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/signup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            name: `${firstName} ${lastName}`,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Something went wrong");
+      }
+
+      setSuccess(true);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+    }
   };
 
   return (
@@ -58,6 +91,8 @@ export default function SignupForm() {
         <Button type="submit" className="bg-blue-600 text-white p-2 rounded">
           Sign Up
         </Button>
+        {error && <p className="text-red-500">{error}</p>}
+        {success && <p className="text-green-500">Signup successful!</p>}
       </form>
     </>
   );
